@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Indian Art Timeline</title>
+  <style>
+    /* Reset + base */
+    :root{
+      --card-w: 260px;
+      --card-h: 180px;
+      --thumb-h: 100px;     /* thumbnail height inside each card */
+      --gap: 60px;
+      --accent: #c59d5f; /* Royal gold */
+      --muted: #bfae97;
+      --bg: #1c1a29; /* Deep royal purple/navy */
+      --panel-bg: #fdfcf8;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: 'Georgia', serif;
+      background: radial-gradient(circle at top, #2b2642, #1c1a29 70%);
+      color:#f5f0e8;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:40px;
+    }
+
+    h1,h2{font-size:24px; margin:0 0 14px 0; color:var(--accent)}
+    p.lead{color:var(--muted); margin:6px 0 20px}
+
+    /* TIMELINE WRAPPER */
+    .timeline-wrap{
+      width:100%;
+      max-width:1400px;
+      text-align:center;
+    }
+
+    /* Horizontal scroll area */
+    .timeline{
+      position:relative;
+      display:flex;
+      gap:var(--gap);
+      align-items:center;
+      padding:60px 40px;
+      overflow-x:auto;
+      scroll-behavior:smooth;
+      -webkit-overflow-scrolling:touch;
+      border-radius:16px;
+      background:rgba(255,255,255,0.03);
+    }
+    /* scrollbar styled similar to bg */
+    .timeline::-webkit-scrollbar{height:12px}
+    .timeline::-webkit-scrollbar-track{background:var(--bg)}
+    .timeline::-webkit-scrollbar-thumb{background:#3a3652; border-radius:8px}
+
+    /* Connector line running beneath the cards */
+    .connector{
+      position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
+      height:6px; background:linear-gradient(90deg,var(--accent), transparent);
+      z-index:0; border-radius:3px; pointer-events:none;
+      opacity:0.3;
+    }
+
+    /* Card base */
+    .card{
+      position:relative;
+      z-index:1;
+      min-width:var(--card-w);
+      width:var(--card-w);
+      height:var(--card-h);
+      background:linear-gradient(160deg, rgba(197,157,95,0.12), rgba(255,255,255,0.03));
+      border-radius:16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      padding:12px;
+      color:var(--panel-bg);
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-start;
+      align-items:center;
+      transition:transform .45s cubic-bezier(.25,.8,.25,1), box-shadow .45s ease, border-color .45s ease;
+      cursor:pointer;
+      outline: none;
+      border:2px solid transparent;
+      overflow:hidden;
+    }
+
+    .card:focus{box-shadow:0 8px 30px rgba(0,0,0,0.65); border-color: rgba(197,157,95,0.5)}
+
+    /* thumbnail inside card (preview) */
+    .card-thumb{
+      width:100%;
+      height:var(--thumb-h);
+      object-fit:cover;     /* crop to fill nicely */
+      border-radius:10px;
+      display:block;
+      margin-bottom:10px;
+      flex-shrink:0;
+      background:#f0efe8;   /* shows if image missing */
+    }
+
+    /* small year text */
+    .year{font-weight:700; font-size:20px; letter-spacing:0.4px; color:var(--accent)}
+    .label{font-size:13px; color:var(--muted); margin-top:6px}
+
+    /* Little circular node */
+    .node{
+      position:absolute; left:-32px; top:50%; transform:translateY(-50%);
+      width:20px; height:20px; border-radius:50%; background:var(--accent);
+      box-shadow:0 4px 12px rgba(0,0,0,0.6);
+      z-index:2;
+    }
+
+    /* expanded details panel */
+    .details-panel{
+      margin-top:24px;
+      background:var(--panel-bg);
+      color:#1c1a29;
+      border-radius:16px;
+      padding:18px;
+      display:flex;
+      gap:20px;
+      align-items:flex-start;
+      box-shadow:0 10px 40px rgba(0,0,0,0.6);
+      max-width:1200px;
+      transition: all .45s ease;
+      margin-left:auto;
+      margin-right:auto;
+      justify-content:center;
+    }
+
+    /* details image — fits and preserves aspect ratio (no stretching) */
+    #details-img{
+      width:100%;
+      max-width:520px;
+      max-height:70vh;
+      height:auto;
+      object-fit:contain;   /* show entire artifact, no distortion */
+      border-radius:10px;
+      display:block;
+      background:#f6f4ef;
+    }
+
+    .details-body{max-width:800px}
+    .details-body h3{margin:0 0 8px; color:var(--accent)}
+    .details-body p{margin:8px 0 0; color:#444; line-height:1.45}
+
+    /* When a card is active */
+    .card.active{
+      transform:translateY(-12px) scale(1.04);
+      box-shadow: 0 22px 60px rgba(0,0,0,0.75);
+      border-color: var(--accent);
+    }
+
+    /* responsive adjustments */
+    @media (max-width:760px){
+      :root{--card-w:200px; --card-h:150px; --thumb-h:92px;}
+      .details-panel{flex-direction:column; align-items:center}
+      #details-img{max-width:92vw; height:auto}
+      .details-body{max-width:92vw}
+    }
+
+    .arrow-up{
+      width:18px; height:18px; transform:rotate(45deg); background:var(--panel-bg); position:relative; top: -10px; left:12px; box-shadow:0 6px 12px rgba(0,0,0,0.12);
+    }
+
+    .hint{color:var(--muted); font-size:14px; margin-top:16px}
+  </style>
+</head>
+<body>
+  <div class="timeline-wrap">
+    <h1>Interactive Timeline — Indian Art</h1>
+    <h2>By Hardik Jindal - RA2311030010221</h2>
+    <p class="lead">Scroll horizontally. Click a year-card to see an artifact replica and description.</p>
+
+    <div class="timeline" role="list" tabindex="0" aria-label="Interactive timeline of Indian art">
+      <div class="connector" aria-hidden="true"></div>
+
+      <!-- Cards: I kept your original image filenames exactly as requested and added a thumbnail <img> inside each card. -->
+      <button type="button" class="card" role="listitem"
+              data-year="250 BCE"
+              data-title="Mauryan Pillar Capital"
+              data-img="img1.jpeg"
+              data-desc="The Mauryan pillars, built during Emperor Ashoka’s reign in the 3rd century BCE, are towering monolithic sandstone columns polished to a mirror-like finish. They were inscribed with Ashoka’s edicts promoting Buddhist values and moral conduct. Many were crowned with beautifully carved animal capitals, the most famous being the Lion Capital of Sarnath, which later became India’s national emblem.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img1.jpeg" alt="Mauryan pillar thumbnail" />
+        <div class="year">250 BCE</div>
+        <div class="label">Mauryan</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="5th C"
+              data-title="Ajanta Mural"
+              data-img="ajanta-murals-8M.jpg"
+              data-desc="The Ajanta caves are world-renowned for their murals depicting Buddhist Jataka tales, royal courts, and everyday life. Painted with natural pigments on plastered rock surfaces, these vibrant scenes combine graceful lines, expressive faces, and intricate detailing, reflecting the spiritual and artistic brilliance of Gupta-era India.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="ajanta-murals-8M.jpg" alt="Ajanta mural thumbnail" />
+        <div class="year">5th C</div>
+        <div class="label">Ajanta</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="11th C"
+              data-title="Chola Bronze"
+              data-img="img2.jpg"
+              data-desc="The Chola dynasty perfected the lost-wax technique to create exquisite bronze idols of Hindu deities, most famously Nataraja, the cosmic dancer. These bronzes are celebrated for their fluidity, spiritual symbolism, and masterful balance between naturalism and divine idealism, embodying the pinnacle of South Indian metal art.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img2.jpg" alt="Chola bronze thumbnail" />
+        <div class="year">11th C</div>
+        <div class="label">Chola</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="17th C"
+              data-title="Mughal Miniature"
+              data-img="img3.jpg"
+              data-desc="Mughal miniature paintings flourished under emperors like Akbar, Jahangir, and Shah Jahan, blending Persian finesse with Indian themes. Characterized by delicate brushwork, vibrant colors, and fine detailing, they depict courtly grandeur, nature studies, and epic tales, offering a window into the sophistication of Mughal culture.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img3.jpg" alt="Mughal miniature thumbnail" />
+        <div class="year">17th C</div>
+        <div class="label">Mughal</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="19th C"
+              data-title="Company School Painting"
+              data-img="img4.jpeg"
+              data-desc="The Company School emerged during colonial rule, when Indian artists adapted traditional styles to suit European tastes. These works often portrayed local flora, fauna, architecture, and people with meticulous naturalism, creating a hybrid visual record that bridged Indian artistry and British patronage.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img4.jpeg" alt="Company school thumbnail" />
+        <div class="year">19th C</div>
+        <div class="label">Company School</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="20th C"
+              data-title="Bengal School"
+              data-img="img5.jpeg"
+              data-desc="Led by artists like Abanindranath Tagore, the Bengal School rejected Western academic realism and sought to revive India’s indigenous aesthetic traditions. Drawing inspiration from Mughal miniatures, Ajanta murals, and Japanese wash techniques, their art evoked spirituality, simplicity, and national pride during the freedom movement.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img5.jpeg" alt="Bengal school thumbnail" />
+        <div class="year">20th C</div>
+        <div class="label">Bengal School</div>
+      </button>
+
+      <button type="button" class="card" role="listitem"
+              data-year="1950s"
+              data-title="Modern Indian Art"
+              data-img="img6.jpg"
+              data-desc="Post-independence India witnessed a wave of experimentation as artists sought new identities beyond colonial influence. Movements like the Progressive Artists’ Group embraced modernism, abstraction, and bold themes, combining Indian motifs with global trends to reflect the challenges and aspirations of a newly independent nation.">
+        <span class="node" aria-hidden="true"></span>
+        <img class="card-thumb" src="img6.jpg" alt="Modern Indian art thumbnail" />
+        <div class="year">1950s</div>
+        <div class="label">Modern</div>
+      </button>
+    </div>
+
+    <div id="details" class="details-panel" aria-live="polite" style="display:none;">
+      <div style="display:flex; flex-direction:column; align-items:flex-start">
+        <div class="arrow-up" aria-hidden="true"></div>
+      </div>
+
+      <!-- details image (keeps aspect ratio, fits on screen) -->
+      <img id="details-img" src="" alt="Artifact image" />
+
+      <div class="details-body">
+        <h3 id="details-title"></h3>
+        <strong id="details-year" style="color:#555"></strong>
+        <p id="details-desc"></p>
+      </div>
+    </div>
+
+    <p class="hint">Tip: Use left/right arrow keys to scroll. Press Enter/Space on a card to view details. Esc closes panel.</p>
+  </div>
+
+  <script>
+    const timeline = document.querySelector('.timeline');
+    const cards = Array.from(document.querySelectorAll('.card'));
+    const details = document.getElementById('details');
+    const dImg = document.getElementById('details-img');
+    const dTitle = document.getElementById('details-title');
+    const dYear = document.getElementById('details-year');
+    const dDesc = document.getElementById('details-desc');
+
+    // Show details for a card
+    function openDetails(card){
+      cards.forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+
+      // populate panel
+      const src = card.dataset.img || '';
+      dImg.style.display = 'block';            // show image by default
+      dImg.src = src;
+      dImg.alt = (card.dataset.title || 'Artifact image');
+
+      dTitle.textContent = card.dataset.title || '';
+      dYear.textContent = card.dataset.year || '';
+      dDesc.textContent = card.dataset.desc || '';
+
+      details.style.display = 'flex';
+
+      // center clicked card in the timeline viewport
+      const cardRect = card.getBoundingClientRect();
+      const containerRect = timeline.getBoundingClientRect();
+      const offset = (cardRect.left + cardRect.right) / 2 - (containerRect.left + containerRect.right) / 2;
+      timeline.scrollBy({ left: offset, behavior: 'smooth' });
+
+      // handle image load error (hide image area if missing)
+      dImg.onerror = () => { dImg.style.display = 'none'; };
+      dImg.onload = () => { dImg.style.display = 'block'; };
+
+      // focus details for screen-readers
+      details.setAttribute('tabindex','-1');
+      details.focus({preventScroll:true});
+    }
+
+    // attach handlers
+    cards.forEach(card => {
+      // allow keyboard activation
+      card.setAttribute('tabindex', '0');
+
+      card.addEventListener('click', () => openDetails(card));
+      card.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openDetails(card); }
+      });
+    });
+
+    // keyboard scroll support for timeline
+    timeline.addEventListener('keydown', (e) => {
+      const step = 300;
+      if (e.key === 'ArrowRight') { timeline.scrollBy({ left: step, behavior: 'smooth' }); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { timeline.scrollBy({ left: -step, behavior: 'smooth' }); e.preventDefault(); }
+    });
+
+    // click outside closes details
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('.card') && !ev.target.closest('.details-panel')) {
+        cards.forEach(c => c.classList.remove('active'));
+        details.style.display = 'none';
+      }
+    });
+
+    // Escape closes
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        cards.forEach(c => c.classList.remove('active'));
+        details.style.display = 'none';
+      }
+    });
+
+    // On load, make sure first card is focusable and visible
+    window.addEventListener('load', () => {
+      if (cards.length) cards[0].focus();
+    });
+  </script>
+</body>
+</html>
